@@ -2,7 +2,8 @@
 const {
 	grouper,
 	ignore,
-	compiler
+	compiler,
+	postformat
 } = require('./syntaxer.js');
 
 const {
@@ -24,5 +25,5 @@ a = ignore(a);
 a = compiler(a);
 
 for(let x of a){
-	console.log(x);
+	console.log(JSON.stringify(x));
 }

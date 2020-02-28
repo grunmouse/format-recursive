@@ -86,7 +86,11 @@ function *compiler(tockens, doEval){
 				stack.pushMany([{type:'S'}, item]);
 				oper.pushMany(['push', item]);
 			}
-			else if(item.type === 'macro' || item.type === 'call'){
+			else if(item.type === 'call'){
+				stack.pushMany([{type:'S'}, {type:'DOCALL'}, {type:'name'}, item]);
+				oper.pushMany(['push', 0, 1, 1]);
+			}
+			else if(item.type === 'macro'){
 				stack.pushMany([{type:'S'}, {type:'DOCALL'}, {type:'name'}, item]);
 				oper.pushMany(['push', 0, 1, 1]);
 			}
@@ -100,9 +104,13 @@ function *compiler(tockens, doEval){
 				stack.pushMany([{type:'ARG'}, item]);
 				oper.pushMany([0, item]);
 			}
-			else if(item.type === 'macro' || item.type === 'call'){
+			else if(item.type === 'call'){
 				stack.pushMany([{type:'ARG'}, {type:'DOCALL'}, {type:'name'}, item]);
-				oper.pushMany([0, 0, 1, 1]);
+				oper.pushMany(['concat', 0, 1, 1]);
+			}
+			else if(item.type === 'macro'){
+				stack.pushMany([{type:'ARG'}, {type:'DOCALL'}, {type:'name'}, item]);
+				oper.pushMany(['concat', 0, 1, 1]);
 			}
 			else if(item.type === '>'){
 				stack.push(item);
@@ -116,12 +124,10 @@ function *compiler(tockens, doEval){
 		else if(top.type === 'DOCALL'){
 			if(item.type === '}'){
 				stack.push(item);
-				//oper.pop();
-				oper.push('call');
+				oper.push('eval');
 			}
 			else if(item.type === '!'){
 				stack.pushMany([{type:'ARGLIST'}, item]);
-				//oper.pop(0);
 				oper.pushMany([0, 'begin']);
 			}
 			else{
@@ -133,7 +139,7 @@ function *compiler(tockens, doEval){
 			if(item.type === '}'){
 				stack.push(item);
 				//oper.pop();
-				oper.push('call');
+				oper.push('eval');
 			}
 			else if(item.type === 'name'){
 				stack.pushMany([{type:'ARGLIST'}, {type:'ARG'}, {type:'<'}, item]);
@@ -189,5 +195,5 @@ function *compiler(tockens, doEval){
 module.exports = {
 	grouper,
 	ignore,
-	compiler
+	compiler,
 };
