@@ -1,0 +1,9 @@
+TEMPLATE ::= PART*;
+PART ::= TEXT;
+PART ::= VARIABLE;
+PART ::= MACRO;
+VARIABLE ::= '${' VARCALL '}';
+MACRO ::= '$' '$'+ '{' VARCALL '}';
+TEXT ::= [^$]+;
+TEXT ::= '\$';
+TEXT ::= '$\{
