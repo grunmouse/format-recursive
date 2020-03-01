@@ -11,6 +11,12 @@ const {
 	preeval
 } = require('./lexer.js');
 
+const {
+	evaluator,
+	eval
+} = require('./evaluator.js');
+
+
 
 const fs = require('fs');
 

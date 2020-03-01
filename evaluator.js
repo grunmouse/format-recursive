@@ -1,6 +1,7 @@
 const Stack = require('@grunmouse/stack');
 
-const call = (templace, vars)=>{
+const call = (template, vars)=>{
+	return [...evaluator(templace, vars)].join('');
 };
 
 const macro = (name, vars, level)=>{
@@ -31,6 +32,9 @@ function *evaluator(commands, variables){
 	
 	for(let com of commands){
 		if(com.type){
+			if(com.type==='call' || com.type==='macro'){
+				frames.push({});
+			}
 			stack.push(com);
 		}
 		else{
@@ -44,8 +48,6 @@ function *evaluator(commands, variables){
 					stack.top.value += command.value;
 				} break;
 				case 'begin':
-					frames.push({});
-					stack.push({type:'vars', value:trames.top});
 					break;
 				case 'def':{
 					let value = stack.pop().value;
@@ -53,16 +55,8 @@ function *evaluator(commands, variables){
 					frames.top[name] = value;
 				} break;
 				case 'eval':{
-					let first = stack.pop();
-					let vars, name;
-					if(first.type === 'vars'){
-						vars = frames.pop();
-						name = stack.pop().value;
-					}
-					else{
-						vars = {};
-						name = first.value;
-					}
+					let vars = frames.pop();
+					let name = stack.pop().value;
 					let method = stack.pop();
 					if(method.type === 'macro'){
 						let level = method.value.length-1;
@@ -83,4 +77,9 @@ function *evaluator(commands, variables){
 			}
 		}
 	}
-}
+};
+
+module.exports = {
+	evaluator,
+	eval:call
+};
