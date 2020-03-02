@@ -1,199 +1,191 @@
 
 const Stack = require('@grunmouse/stack');
 
-function *grouper(tockens){
-	let state = 'start', type;
-	let buffer;
-	for(let item of tockens){
-		if(state === 'start'){
-			type = item.type;
-			buffer = [item.value];
-			state = type;
-		}
-		else if(type === item.type){
-			if(['name', 'text', 'ignore'].includes(type)){
-				buffer.push(item.value);
-			}
-			else{
-				let value = buffer.join('');
-				yield {type, value};
-				buffer = [item.value];
-			}
-		}
-		else{ 
-			let value = buffer.join('');
-			yield {type, value};
-			if(state === 'noname' && item.type === 'name'){
-				throw new SyntaxError(`Неожиданное имя ${value} ${item.value}`);
-			}
-			else if(state === 'name' && item.type === 'ignore'){
-				state = 'noname';
-			}
-			else{
-				state = item.type;
-			}
-			type = item.type;
-			buffer = [item.value];
-		}
-	}
-	let value = buffer.join('');
-	yield {type, value};
-}
+/*
+1	MAIN := text;
+2	MAIN := MAIN CALL text;
+3	MAIN := MAIN INCORRECT;
+4	CALL := macro;
+5	CALL := generic ARGLIST text end generic;
+6	ARGLIST := ARG;
+7	ARGLIST := ARGLIST ARG;
+8	ARG := text arg ARGTEXT end arg;
+9	ARGTEXT := text;
+10	ARGTEXT := ARGTEXT CALL text;
+	
+11	INCORRECT := generic IARGLIST;
+12	IARGLIST := IARG;
+13	IARGLIST := ARGLIST IARG;
+14	IARG := text arg IARGTEXT;
+15	IARG := error;
+16	IARGTEXT := ARGTEXT CALL error;
+17	IARGTEXT := error;
+18	IARGTEXT := ARGTEXT INCORRECT;
+*/
 
-function *ignore(tockens){
-	for(let item of tockens){
-		if(item.type !== 'ignore'){
-			yield item;
+const Rule = {
+	1:['MAIN', 1],
+	2:['MAIN', 3],
+	3:['MAIN', 2],
+	4:['CALL', 1],
+	5:['CALL', 4],
+	6:['ARGLIST', 1],
+	7:['ARGLIST', 2],
+	8:['ARG', 4],
+	9:['ARGTEXT', 1],
+	10:['ARGTEXT', 3],
+	
+	11:['INCORRECT', 2],
+	12:['IARGLIST', 1],
+	13:['IARGLIST', 2],
+	14:['IARG', 3],
+	15:['IARG', 1],
+	16:['IARGTEXT', 3],
+	17:['IARGTEXT', 1],
+	18:['IARGTEXT', 1]
+};
+
+const toConcat = (type, data)=>{
+	if(data.length>1 && data[0].type === type){
+		data = data[0].data.concat(data.slice(1));
+	}
+	return data;
+};
+
+const Special = {
+	MAIN:toConcat,
+	ARGLIST:toConcat,
+	ARGTEXT:toConcat
+};
+
+const State = `
+Q0,text = R1;
+Q0,MAIN = Q1;
+
+Q1,CALL = Q2
+Q1,INCORRECT = R3
+Q1,macro = R4
+Q1,generic = Q3
+
+Q2,text = R2
+
+Q3,ARGLIST = Q4
+Q3,IARGLIST = R11
+Q3,ARG = R6
+Q3,IARG = R12
+Q3,text = Q5
+Q3,error = R15
+
+Q4,ARG = R7
+Q4,IARG = R13
+Q4,text = Q5
+Q4,error = R15
+
+Q5,arg = Q6
+Q5,end generic = R5
+
+Q6,ARGTEXT = Q7
+Q6,IARGTEXT = R14
+Q6,text = R9
+Q6,error = R17
+
+Q7,end arg = R8
+Q7,CALL = Q8
+Q7,INCORRECT = R18
+Q7,macro = R4
+Q7,genetic = Q3
+
+Q8,text = R10
+Q8,error = R16
+`.split(/\n\s*/g).reduce((akk, text)=>{
+	text.replace(/Q(\d+),([^=]+) = ([QR])(\d+)/, (_, state, type, command, number)=>{
+		state = +state;
+		number = +number;
+		if(!akk[state]){
+			akk[state] = {};
+		}
+		if(command === 'Q'){
+			akk[state][type] = (stack, read, tocken)=>{
+				stack.push(tocken);
+				stack.push(number);
+				return read();
+			};
+		}
+		else if(command === 'R'){
+			akk[state][type] = (stack, read, tocken)=>{
+				let [ntype, count] = Rule[number];
+				let data = [];
+				for(let i=1; i<count; ++i){
+					stack.pop();
+					data.push(stack.pop());
+				}
+				data.reverse();
+				data.push(tocken);
+				let fun = Special[ntype];
+				if(fun){
+					data = fun(ntype, data);
+				}
+				return {type:ntype, data};
+			};
+		}
+	});
+	return akk;
+}, {});
+
+/**
+ * @param tockens:Iterator - итератор токенов, полученный из лексического анализатора
+ */
+function translator(tockens){
+	const stack = new Stack();
+	const read = ()=>{
+		let item = tockens.next();
+		return item.done ? {type:'<EOF>'} : item.value;
+	};
+	const pop = (count)=>{
+		let result = [];
+		for(let i=0; i<count; ++i){
+			stack.pop();
+			result.push(stack.pop());
+		}
+		return result.reverse();
+	};
+	let tocken = read();
+	
+	stack.push(0);
+	while(true){
+		let state = stack.top;
+		let type = tocken.type;
+		
+		console.log(state, type);
+		
+		let handler = State[state][type];
+		if(handler){
+			tocken = handler(stack, read, tocken);
+		}
+		else if(type === '<EOF>'){
+			let [MAIN] = pop(1);
+			return MAIN;
+		}
+		else{
+			throw new Error('HZ');
 		}
 	}
 }
 
 /*
-
-S -> text S;
-S -> macro name DOCALL S;
-S -> call name DOCALL S;
-S -> none;
-DOCALL -> };
-DOCALL -> ! ARGLIST;
-ARGLIST -> name < ARG ARGLIST;
-ARGLIST -> };
-ARG -> text ARG;
-ARG -> macro name DOCALL ARG;
-ARG -> call name DOCALL ARG;
-ARG -> >;
-
+	Нетерминальные символы
+	MAIN
+	CALL
+	ARGLIST
+	ARG
+	ARGTEXT
+	
+	INCORRECT
+	IARGLIST
+	IARG
+	IARGTEXT
 */
 
-
-
-function *compiler(tockens, doEval){
-	let stack = new Stack();
-	let oper = new Stack();
-	stack.push({type:'S'});
-	oper.push(0);
-	for(let item of tockens){
-		//console.log('top ' , stack.top.type);
-		//console.log('item ' , item.type);
-		//console.log('item ' , item.type);
-		let top = stack.pop();
-		
-		let command = oper.pop();
-
-		let net = false;
-		if(top.type === 'S'){
-			if(item.type === 'text'){
-				stack.pushMany([{type:'S'}, item]);
-				oper.pushMany(['push', item]);
-			}
-			else if(item.type === 'call'){
-				stack.pushMany([{type:'S'}, {type:'DOCALL'}, {type:'name'}, item]);
-				oper.pushMany(['push', 0, 1, 1]);
-			}
-			else if(item.type === 'macro'){
-				stack.pushMany([{type:'S'}, {type:'DOCALL'}, {type:'name'}, item]);
-				oper.pushMany(['push', 0, 1, 1]);
-			}
-			else{
-				throw new SyntaxError(`S -> ${item.type}`);
-			}
-			net = true;
-		}
-		else if(top.type === 'ARG'){
-			if(item.type === 'text'){
-				stack.pushMany([{type:'ARG'}, item]);
-				oper.pushMany([0, item]);
-			}
-			else if(item.type === 'call'){
-				stack.pushMany([{type:'ARG'}, {type:'DOCALL'}, {type:'name'}, item]);
-				oper.pushMany(['concat', 0, 1, 1]);
-			}
-			else if(item.type === 'macro'){
-				stack.pushMany([{type:'ARG'}, {type:'DOCALL'}, {type:'name'}, item]);
-				oper.pushMany(['concat', 0, 1, 1]);
-			}
-			else if(item.type === '>'){
-				stack.push(item);
-				oper.push('def');
-			}
-			else{
-				throw new SyntaxError(`S -> ${item.type}`);
-			}
-			net = true;
-		}
-		else if(top.type === 'DOCALL'){
-			if(item.type === '}'){
-				stack.push(item);
-				oper.push('eval');
-			}
-			else if(item.type === '!'){
-				stack.pushMany([{type:'ARGLIST'}, item]);
-				oper.pushMany([0, 'begin']);
-			}
-			else{
-				throw new SyntaxError(`DOCALL -> ${item.type}`);
-			}
-			net = true;
-		}
-		else if(top.type === 'ARGLIST'){
-			if(item.type === '}'){
-				stack.push(item);
-				//oper.pop();
-				oper.push('eval');
-			}
-			else if(item.type === 'name'){
-				stack.pushMany([{type:'ARGLIST'}, {type:'ARG'}, {type:'<'}, item]);
-				//oper.pop(0);
-				oper.pushMany([0, 0, 0, 1]);
-			}
-			else{
-				throw new SyntaxError(`ARGLIST -> ${item.type}`);
-			}
-			net = true;
-		}
-		
-		if(net){
-			top = stack.pop();
-			
-			if(command == 0){
-			}
-			else if(command == 1){
-				yield item;
-			}
-			else if(command.call){
-				yield command(item);
-			}
-			else{
-				yield command;
-			}
-			command = oper.pop();
-		}
-		
-		if(top.type === item.type){
-			if(command == 0){
-			}
-			else if(command == 1){
-				yield item;
-			}
-			else if(command.call){
-				yield command(item);
-			}
-			else{
-				yield command;
-			}
-		}
-		else{
-			throw new SyntaxError(`${top.type} -> ${item.type}`);
-		}
-		
-	}
-	
-	yield 'push';
-}
-
-
 module.exports = {
-	grouper,
-	ignore,
-	compiler,
+	translator
 };

@@ -1,20 +1,10 @@
 
 const {
-	grouper,
-	ignore,
-	compiler,
-	postformat
+	translator
 } = require('./syntaxer.js');
 
-const {
-	lexer,
-	preeval
-} = require('./lexer.js');
+const lexer = require('./lexer.js');
 
-const {
-	evaluator,
-	eval
-} = require('./evaluator.js');
 
 
 
@@ -24,12 +14,13 @@ let tmp = fs.readFileSync('..\\db-book\\db-files\\vers-0\\template\\setlost.sql'
 
 
 let a = lexer(tmp);
-a = preeval(a);
-a = grouper(a);
-a = ignore(a);
 
-a = compiler(a);
+
 
 for(let x of a){
 	console.log(JSON.stringify(x));
 }
+
+let m = translator(lexer(tmp));
+
+console.log(JSON.stringify(m, '', 4));

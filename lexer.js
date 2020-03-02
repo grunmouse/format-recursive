@@ -1,202 +1,132 @@
 const Stack = require('@grunmouse/stack');
 
-
-const lexPattern = /(\\\\|\\.|\$+\{|\}|\[|\]|<|>|\!|[A-Za-z$_][A-Za-z$_\d]*|\s+)/g;
-
-const lexType = (str)=>{
-	if(str.length === 1 && !!~'[]<>}!'.indexOf(str)){
-		return str;
-	}
-	if(str[0]=== '\\'){
-		return 'escape';
-	}
-	else if(/^\$+\{$/.test(str)){
-		return 'buck';
-	}
-	else if(/^\s+$/.test(str)){
-		return 'space';
-	}
-	else if(/^[A-Za-z$_][A-Za-z$_\d]*$/.test(str)){
-		return 'name';
-	}
-	else{
-		return 'else';
-	}
-}
-/*
-Types
-	[
-	]
-	<
-	>
-	buck
-	}
-	!
-	escape
-	space
-	name
-	else
-*/
-/*
-	Символы, не меняющие состояние - считаются продолжением строки.
-	Символы, меняющие состояние - считаются управляющими символами и передаются отдельно.
-	Символы, возвращающие ignore - считаются безразличными и передаются отдельно.
-	Символы, возворащающие error - вызывают ошибку.
-	Символы, возвращающие pop - меняют состояние на предыдущее
-	
-	Символ any по умолчанию не меняет состояния.
-	Символ прочие символы по умолчанию равны символу any.
-
- */
-const lexTable = {
-	text:{
-		buck:'varname',
-	},
-	argtext:{
-		buck:'varname',
-		'>':'pop'
-	},
-	'varname':{
-		'[':'ecranname',
-		'}':'pop',
-		'!':'argname',
-		'name':'varname',
-		'space':'ignore',
-		'any':'error'
-	},
-	ecranname:{
-		']':'pop'
-	},
-	argname:{
-		'}':'pop pop',
-		'<':'argtext',
-		'[':'ecranname',
-		'space':'ignore',
-		'name':'argname',
-		'else':'ignore',
-		'any':'error'
-	}
-};
-
-/*
- OutTypes
-	<
-	>
-	call
-	macro
-	}
-	!
-	text
-	name
-	ignore
-*/
-
-const lexFunction = (state, type)=>(lexTable[state][type] || lexTable[state]['any'] || state);
-
 /**
- * Распознаёт лексемы, создаёт для них токены
+ * Паттер имени 
+ * Имя может быть валидным идентификатором, целым числом или произвольной строкой, заключённой в []
  */
+const patName = '[A-Za-z_$][\\w$]*|\\d+|\\[[^\\]]+\\]';
+
+const patVaropen = `\\$(\\$*)\\{\\s*(${patName})\\s*(!|\\})`;
+
+const patArglist = `(\\})|(${patName})[^<]*<`;
+
+const patArgText = `${patVaropen}|(>)`;
+
 function *lexer(str){
-	let elements = str.split(lexPattern).filter(a=>a.length>0);
-	//console.log(elements);
-	let stack = new Stack();
+	const stack = new Stack();
 	stack.push('text');
-	let buffer = [];
-	for(let item of elements){
-		let state = stack.top;
-		let type = lexType(item);
-		let next = lexFunction(state, type);
-		
-		if(type === 'escape'){
-			item = item.slice(1);
-		}
-		
-		if(next === state){
-			buffer.push(item);
-		}
-		else{
-			//Значение - не часть текущего состояния, нужно отправить буфер
-			yield {type:state, buffer};
-			buffer = [];
-			//Буфер сброшен
-			if(next === 'ignore'){
-				yield {type:'ignore', buffer:[item]};
-			}
-			else if(next === 'error'){
-				throw new SyntaxError(`Неожиданный ${item} в ${state}`);
-			}
-			else{
-				//console.log(stack.top + '(' + item + ')');
-				//next - меняет состояние
-				if(next === 'pop'){
-					stack.pop();
-				}
-				else if(next === 'pop pop'){
-					stack.pop();
-					stack.pop();
+	let index = 0;
+	while(index<str.length){
+		switch(stack.top){
+			case 'text':{
+				//Ищем начало шаблона
+				let reg = new RegExp(patVaropen, 'ug');
+				reg.lastIndex = index-1;
+				let match = reg.exec(str);
+				if(match){
+					//Нашли, отправляем предшествующий ему текст
+					let prev = str.slice(index, match.index);
+					yield {type:'text', raw:prev};
+					let [raw, level, name, call] = match
+					if(call === '}'){
+						//Шаблон без аргументов
+						yield {type:'macro', raw, level, name};
+					}
+					else{
+						//Шаблон с аргументами
+						yield {type:'generic', raw, level, name};
+						//Переходим в режим сбора аргументов
+						stack.push('arglist');
+					}
+					index = reg.lastIndex;
 				}
 				else{
-					stack.push(next);
+					//Не нашли, шаблонов до конца нет, только статичный текст
+					let prev = str.slice(index)
+					//Отправляем остаток текста и завершаем работу
+					yield {type:'text', raw:prev};
+					return;
 				}
+			} break;
+			case 'arglist':{
+				//Ищем начало очередного аргумента или конец шаблона
+				let reg = new RegExp(patArglist, 'ug');
+				reg.lastIndex = index-1;
+				let match = reg.exec(str);
+				if(match){
+					//Нашли, отправляем предшествующий ему текст
+					let prev = str.slice(index, match.index);
+					yield {type:'text', raw:prev};
+					let [raw, call, name] = match;
+					if(call){
+						//Это конец шаблона, отправляем его и возвращаемся к сбору текста
+						yield {type:'end generic', raw};
+						stack.pop();
+					}
+					else if(name){
+						//Это аргумент, мы получили его имя и позицию начала его значения
+						yield {type:'arg', raw, name};
+						stack.push('argtext');
+					}
+					index = reg.lastIndex;
+				}
+				else{
+					//Нет конца шаблона, это ошибка, но лексическому анализатору нет до неё дела
+					let prev = str.slice(index)
+					//Отправляем остаток текста и завершаем работу
+					yield {type:'error', raw:prev, message:'unclosed template'};
+					return;
+				}
+			} break;
+			case 'argtext':{
+				//Ищем начало шаблона или конец аргумента
+				let reg = new RegExp(patArgText, 'ug');
+				reg.lastIndex = index-1;
+				let match = reg.exec(str);
+				if(match){
+					//Нашли, отправляем предшествующий ему текст
+					let prev = str.slice(index, match.index);
+					yield {type:'text', raw:prev};
+					let [raw, level, name, call, endarg] = match
+					if(endarg){
+						//Нашли конец аргумента, отправляем его и ищем следующий аргумент
+						yield {type:'end arg', raw};
+						stack.pop();
+					}
+					else if(call === '}'){
+						//Нашли шаблон без аргументов
+						yield {type:'macro', raw, level, name};
+					}
+					else{
+						//Нашли шаблон с аргументами
+						yield {type:'generic', raw, level, name};
+						//Переходим в режим сбора аргументов
+						stack.push('arglist');
+					}
+					index = reg.lastIndex;
+				}
+				else{
+					//Нет конца аргумента это ошибка, но лексическому анализатору нет до неё дела
+					let prev = str.slice(index)
+					//Отправляем остаток текста и завершаем работу
+					yield {type:'error', raw:prev, message:'unclose argument'};
+					return;
+				}
+			}break;
 				
-				yield {type, buffer:[item]};
-			}
 		}
 	}
-	yield {type:stack.top, buffer};
 }
 
 /**
- * Вычисляет значения токенов и обобщает их
+ * Возможные возвращаемые объекты
+ * {type:'text', raw} - статический текст
+ * {type:'macro', raw, level, name} - шаблон без аргументов
+ * {type:'generic', raw, level, name} - начало шаблона с аргументами
+ * {type:'end generic', raw} - конец шаблона с аргументами
+ * {type:'arg', raw, name} - заголовок аргумента
+ * {type:'error', raw, message} - невалидный код (неразобранный остаток строки)
+ * {type:'end arg', raw} - конец аргумента
  */
- 
-function *preeval(iterable){
-	for(let item of iterable){
-		switch(item.type){
-			case 'argname':
-			case 'varname':
-			case 'ecranname':
-				item.type = 'name';
-				item.value = item.buffer.join('');
-				if(!item.value) continue;
-				break;
-			case 'text':
-			case 'argtext':
-				item.type = 'text';
-				item.value = item.buffer.join('');
-				break;
-			case '[':
-			case ']':
-				item.value = item.buffer[0];
-				item.type = 'ignore';
-				break;
-			case 'buck':
-				item.value = item.buffer[0];
-				item.type = item.value > 2 ? 'macro' : 'call';
-				break;
-			default:
-				item.value = item.buffer.join('');
-				break;
-		}
-		yield item;
-	}
-}
 
-/*
- OutTypes
-	<
-	>
-	call
-	macro
-	}
-	!
-	text
-	name
-	ignore
-*/
-
-
-module.exports = {
-	lexer,
-	preeval
-};
+module.exports = lexer;

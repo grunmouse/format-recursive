@@ -1,0 +1,118 @@
+1	MAIN := text;
+2	MAIN := MAIN CALL text;
+3	MAIN := MAIN INCORRECT;
+4	CALL := macro;
+5	CALL := generic ARGLIST text end generic;
+6	ARGLIST := ARG;
+7	ARGLIST := ARGLIST ARG;
+8	ARG := text arg ARGTEXT end arg;
+9	ARGTEXT := text;
+10	ARGTEXT := ARGTEXT CALL text;
+	
+11	INCORRECT := generic IARGLIST;
+12	IARGLIST := IARG;
+13	IARGLIST := ARGLIST IARG;
+14	IARG := text arg IARGTEXT;
+15	IARG := error;
+16	IARGTEXT := ARGTEXT CALL error;
+17	IARGTEXT := error;
+18	IARGTEXT := ARGTEXT INCORRECT;
+
+Q0
+	MAIN := * text;
+	MAIN := * MAIN CALL text;
+	MAIN := * MAIN INCORRECT;
+	
+Q0,text = R1;
+Q0,MAIN = Q1;
+
+Q1
+	MAIN := MAIN * CALL text;
+	MAIN := MAIN * INCORRECT;
+	CALL := * macro;
+	CALL := * generic ARGLIST text end generic;
+	INCORRECT :=  * generic IARGLIST;
+
+Q1,CALL = Q2
+Q1,INCORRECT = R3
+Q1,macro = R4
+Q1,generic = Q3
+
+Q2
+	MAIN := MAIN CALL * text;
+
+Q2,text = R2
+
+Q3
+	CALL := generic * ARGLIST text end generic;
+	INCORRECT :=  generic * IARGLIST;
+	ARGLIST := * ARG;
+	ARGLIST := * ARGLIST ARG;
+	IARGLIST := * IARG;
+	IARGLIST := * ARGLIST IARG;
+	ARG := * text arg ARGTEXT end arg;
+	IARG := * text arg IARGTEXT;
+	IARG := * error;
+
+Q3,ARGLIST = Q4
+Q3,IARGLIST = R11
+Q3,ARG = R6
+Q3,IARG = R12
+Q3,text = Q5
+Q3,error = R15
+
+Q4
+	CALL := generic ARGLIST * text end generic;
+	ARGLIST := ARGLIST * ARG;
+	IARGLIST := ARGLIST * IARG;
+	ARG := * text arg ARGTEXT end arg;
+	IARG := * text arg IARGTEXT;
+	IARG := * error;
+
+Q4,ARG = R7
+Q4,IARG = R13
+Q4,text = Q5
+Q4,error = R15
+
+Q5
+	CALL := generic ARGLIST text * end generic;
+	ARG := text * arg ARGTEXT end arg;
+	IARG := text * arg IARGTEXT;
+
+Q5,arg = Q6
+Q5,end generic = R5
+
+Q6
+	ARG := text arg * ARGTEXT end arg;
+	IARG := text arg * IARGTEXT;
+	ARGTEXT := * text;
+	ARGTEXT := * ARGTEXT CALL text;
+	IARGTEXT := * ARGTEXT CALL error;
+	IARGTEXT := * error;
+	IARGTEXT := * ARGTEXT INCORRECT;
+	
+Q6,ARGTEXT = Q7
+Q6,IARGTEXT = R14
+Q6,text = R9
+Q6,error = R17
+
+Q7
+	ARG := text arg ARGTEXT * end arg;
+	ARGTEXT := ARGTEXT * CALL text;
+	IARGTEXT := ARGTEXT * CALL error;
+	IARGTEXT := ARGTEXT * INCORRECT;
+	CALL := * macro;
+	CALL := * generic ARGLIST text end generic;
+	INCORRECT := * generic IARGLIST;
+
+Q7,end arg = R8
+Q7,CALL = Q8
+Q7,INCORRECT = R18
+Q7,macro = R4
+Q7,genetic = Q3
+
+Q8
+	ARGTEXT := ARGTEXT CALL * text;
+	IARGTEXT := ARGTEXT CALL * error;
+Q8,text = R10
+Q8,error = R16
