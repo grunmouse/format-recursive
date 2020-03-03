@@ -156,13 +156,14 @@ function translator(tockens){
 		let state = stack.top;
 		let type = tocken.type;
 		
-		console.log(state, type);
+		//console.log(state, type);
 		
 		let handler = State[state][type];
 		if(handler){
 			tocken = handler(stack, read, tocken);
 		}
 		else if(type === '<EOF>'){
+			console.log(state);
 			let [MAIN] = pop(1);
 			return MAIN;
 		}
@@ -186,6 +187,4 @@ function translator(tockens){
 	IARGTEXT
 */
 
-module.exports = {
-	translator
-};
+module.exports = translator;

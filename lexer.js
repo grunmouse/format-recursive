@@ -116,6 +116,7 @@ function *lexer(str){
 				
 		}
 	}
+	yield {type:'text', raw:str.slice(index)};
 }
 
 /**
