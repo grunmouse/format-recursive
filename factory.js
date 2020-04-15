@@ -1,4 +1,7 @@
 
+/**
+ * Представляет текст без подстановок
+ */
 class Primitive{
 	constructor(obj){
 		if(typeof obj === 'string'){
@@ -16,6 +19,10 @@ class Primitive{
 	}
 }
 
+/**
+ * Представляет любой валидный шаблон.
+ * Состоит из чередующихся Primitive и Call
+ */
 class Template{
 	constructor(obj){
 		this.items = obj.data.filter(a=>!(a.type==='text' && a.raw.length===0)).map(factory);
@@ -28,6 +35,9 @@ class Template{
 	}
 }
 
+/**
+ * Представляет подстановку
+ */
 class Call{
 	constructor(obj){
 		let items = obj.data;
@@ -45,7 +55,7 @@ class Call{
 	toText(env){
 		if(this.level !== ""){
 			if(this.arglist){
-				return this.level + '{' + this.name + '!'+ this.arglist.getText(env) + this.tail;
+				return this.level + '{' + this.name + '!'+ this.arglist.toText(env) + this.tail;
 			}
 			else{
 				return this.level + '{' + this.name + '}';
@@ -59,7 +69,7 @@ class Call{
 		}
 		else{
 			if(this.arglist){
-				return '${' + this.name + '!'+ this.arglist.getText(env) + this.tail;
+				return '${' + this.name + '!'+ this.arglist.toText(env) + this.tail;
 			}
 			else{
 				return '${' + this.name + '}';
@@ -71,6 +81,9 @@ class Call{
 	}
 }
 
+/**
+ * Представляет массив аргументов
+ */
 class Arglist{
 	constructor(obj){
 		this.items = obj.data.map(a=>(new Arg(a)));
@@ -90,6 +103,10 @@ class Arglist{
 	}
 }
 
+/**
+ * Представляет аргумент
+ * Содержит информацию об имени аргумента и его значения типа Template
+ */
 class Arg{
 	constructor(obj){
 		let [text, arg, ARGTEXT, endarg] = obj.data;

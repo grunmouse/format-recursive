@@ -2,6 +2,12 @@
 const compil = require('./compil.js');
 
 class Frame extends Map{
+	constructor(iterable){
+		if(iterable && typeof iterable === 'object' && !iterable[Symbol.iterator]){
+			iterable = Object.entries(iterable);
+		}
+		super(iterable);
+	}
 	make(){
 		let frame = new Frame(this);
 		return frame;

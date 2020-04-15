@@ -12,6 +12,9 @@ const patArglist = `(\\})|(${patName})[^<]*<`;
 
 const patArgText = `${patVaropen}|(>)`;
 
+/**
+ * Генератор токенов, найденных в строке
+ */
 function *lexer(str){
 	const stack = new Stack();
 	stack.push('text');

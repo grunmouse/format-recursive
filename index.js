@@ -7,11 +7,8 @@ const escape = require('./escape.js');
 
 
 function use(tmpl, vars){
-	const fra = new Frame();
-	if(vars) for(let a in vars){
-		fra.set(a, vars[a]);
-	}
 	const fun = compil(tmpl);
+	const fra = new Frame(vars);
 	
 	return escape.toText(fun(fra));
 }
@@ -19,10 +16,7 @@ function use(tmpl, vars){
 function compile(tmpl){
 	const fun = compil(tmpl);
 	return (vars)=>{
-		const fra = new Frame();
-		if(vars) for(let a in vars){
-			fra.set(a, vars[a]);
-		}
+		const fra = new Frame(vars);
 		return escape.toText(fun(fra));
 	}
 }

@@ -58,6 +58,16 @@ const Special = {
 	ARGTEXT:toConcat
 };
 
+/*
+ * Таблица перехода
+ * R - свёртка, номер - номер правила из Rule
+ * Q - переход
+ * @const State : Object<Number.(Object<String.Function<(stack,read,tocken)=>(next)>>)> - набор функций, выполняющих преобразования
+ * функция выбирается из объекта по номеру состояния и типу очередного токена State[state][type],
+ * вызывается с текущим стеком, функцией чтения входного потока и тем самым токеном tocken = handler(stack, read, tocken)
+ * возвращаемое значение - это следующий токен
+ * побочные эффекты - правильная работа со стеком
+ */
 const State = `
 Q0,text = R1;
 Q0,MAIN = Q1;
@@ -133,14 +143,27 @@ Q8,error = R16
 }, {});
 
 /**
- * @param tockens:Iterator - итератор токенов, полученный из лексического анализатора
+ * 
+ * @param tockens:Iterable - итератор токенов, полученный из лексического анализатора
+ * Строит абстрактное дерево трансляции
  */
 function translator(tockens){
+	/**
+	 * Стек пар символов [дно, 0, символ, состояние, символ, состояние, ... символ, состояние]
+	 */
 	const stack = new Stack();
+	
+	/**
+	 * Читает очередной токен или генерирует токен <EOF>
+	 */
 	const read = ()=>{
 		let item = tockens.next();
 		return item.done ? {type:'<EOF>'} : item.value;
 	};
+	
+	/**
+	 * выталкивает несколько символов из стека и возвращает их в порядке добавления
+	 */
 	const pop = (count)=>{
 		let result = [];
 		for(let i=0; i<count; ++i){
@@ -149,6 +172,7 @@ function translator(tockens){
 		}
 		return result.reverse();
 	};
+	
 	let tocken = read();
 	
 	stack.push(0);
@@ -156,14 +180,12 @@ function translator(tockens){
 		let state = stack.top;
 		let type = tocken.type;
 		
-		//console.log(state, type);
 		
 		let handler = State[state][type];
 		if(handler){
 			tocken = handler(stack, read, tocken);
 		}
 		else if(type === '<EOF>'){
-			console.log(state);
 			let [MAIN] = pop(1);
 			return MAIN;
 		}
