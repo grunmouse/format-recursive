@@ -1,6 +1,12 @@
 
 const compil = require('./compil.js');
-
+/**
+ * @class Frame - кадр, хранящий значения
+ * @extends Map
+ * Может инициализироваться объектом
+ * Содержит функции. 
+ * При добавлении автоматически компилирует добавляемые строки. Если передана не функция и не строка - бросит ошибку
+ */
 class Frame extends Map{
 	constructor(iterable){
 		if(iterable && typeof iterable === 'object' && !iterable[Symbol.iterator]){

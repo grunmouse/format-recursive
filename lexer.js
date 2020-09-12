@@ -6,10 +6,25 @@ const Stack = require('@grunmouse/stack');
  */
 const patName = '[A-Za-z_$][\\w$]*|\\d+|\\[[^\\]]+\\]';
 
+/**
+ * Паттерн подстановки
+ * Находит целый макрос или начало макроса с параметрами
+ * [raw, level, name, call]
+ */
 const patVaropen = `\\$(\\$*)\\{\\s*(${patName})\\s*(!|\\})`;
 
+/**
+ * Паттерн списка аргументов
+ * Находит очередной аргумент или конец макроса
+ * [raw, call, name] 
+ */
 const patArglist = `(\\})|(${patName})[^<]*<`;
 
+/**
+ * Паттерн текста аргумента
+ * Находит вложенную подстановку или конец аргумента
+ * [raw, level, name, call, endarg]
+ */
 const patArgText = `${patVaropen}|(>)`;
 
 /**
@@ -125,12 +140,12 @@ function *lexer(str){
 /**
  * Возможные возвращаемые объекты
  * {type:'text', raw} - статический текст
- * {type:'macro', raw, level, name} - шаблон без аргументов
+ * {type:'macro', raw, level, name} - шаблон без аргументов, level - строка из $ соответствующая глубине вложенности
  * {type:'generic', raw, level, name} - начало шаблона с аргументами
  * {type:'end generic', raw} - конец шаблона с аргументами
  * {type:'arg', raw, name} - заголовок аргумента
- * {type:'error', raw, message} - невалидный код (неразобранный остаток строки)
  * {type:'end arg', raw} - конец аргумента
+ * {type:'error', raw, message} - невалидный код (неразобранный остаток строки)
  */
 
 module.exports = lexer;

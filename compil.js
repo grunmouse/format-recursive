@@ -6,6 +6,9 @@ const factory = require('./factory.js');
 
 const escape = require('./escape.js');
 
+/**
+ * Создаёт из исходного кода функцию, дклающую подстановку и возвращающую текст
+ */
 function compil(code, fin){
 	code = escape.escape(code);
 	let ast = translator(lexer(code));

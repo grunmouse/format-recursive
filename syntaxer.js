@@ -23,6 +23,13 @@ const Stack = require('@grunmouse/stack');
 18	IARGTEXT := ARGTEXT INCORRECT;
 */
 
+/**
+ * Правила свёртки
+ * @const Rule : Object<Number.[String, Number]>
+ * Отображает номер правила свёртки на пары [TYPE, len] - 
+ *	TYPE : String - тип создаваемого нетерминала
+ *  len : Number - количество символов в сворачиваемой строке
+ */
 const Rule = {
 	1:['MAIN', 1],
 	2:['MAIN', 3],
@@ -45,6 +52,10 @@ const Rule = {
 	18:['IARGTEXT', 1]
 };
 
+/**
+ * Объединяет леворекурсивную пару нетерминалов, сливая их data в общий массив
+ * Например ARGLIST(ARGLIST(ARG), ARG) => ARGLIST(ARG, ARG)
+ */
 const toConcat = (type, data)=>{
 	if(data.length>1 && data[0].type === type){
 		data = data[0].data.concat(data.slice(1));
@@ -52,6 +63,12 @@ const toConcat = (type, data)=>{
 	return data;
 };
 
+/**
+ * Специальные функции обработки сворачиваемых строк
+ * @const Special : Object<String.Function<(type, data=>(data)>>
+ * Функции ищутся по типу создаваемого нетерминала, этот же тип передаётся первым аргументом, а вторым - его data.
+ * В результате data должна быть преобразована специфичным для нетерминала образом
+ */
 const Special = {
 	MAIN:toConcat,
 	ARGLIST:toConcat,
@@ -146,10 +163,11 @@ Q8,error = R16
  * 
  * @param tockens:Iterable - итератор токенов, полученный из лексического анализатора
  * Строит абстрактное дерево трансляции
+ * @returned Object - возвращает корневой нетерминал, в данных которого иерархически вложено всё остальное
  */
 function translator(tockens){
 	/**
-	 * Стек пар символов [дно, 0, символ, состояние, символ, состояние, ... символ, состояние]
+	 * Стек пар символов [дно, 0,  символ, состояние,  символ, состояние, ... символ, состояние]
 	 */
 	const stack = new Stack();
 	
