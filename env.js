@@ -1,5 +1,13 @@
 
 const compil = require('./compil.js');
+
+function ensureIterable(iterable){
+	if(iterable && typeof iterable === 'object' && !iterable[Symbol.iterator]){
+		iterable = Object.entries(iterable);
+	}
+	return iterable;
+}
+
 /**
  * @class Frame - кадр, хранящий значения
  * @extends Map
@@ -9,10 +17,7 @@ const compil = require('./compil.js');
  */
 class Frame extends Map{
 	constructor(iterable){
-		if(iterable && typeof iterable === 'object' && !iterable[Symbol.iterator]){
-			iterable = Object.entries(iterable);
-		}
-		super(iterable);
+		super(ensureIterable(iterable));
 	}
 	make(){
 		let frame = new Frame(this);
@@ -26,6 +31,20 @@ class Frame extends Map{
 			throw new TypeError('Value is not callable');
 		}
 		super.set(key, value);
+	}
+	
+	addMany(iterable){
+		iterable = ensureIterable(iterable);
+		for(let [key, value] of iterable){
+			this.set(key, value);
+		}
+		return this;
+	}
+
+	run(name, params){
+		let fun = this.get(tmpl);
+		let fra = this.make().addMany(params);
+		let str = fun(fra);
 	}
 }
 
