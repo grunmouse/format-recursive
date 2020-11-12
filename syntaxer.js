@@ -1,56 +1,45 @@
 
 const Stack = require('@grunmouse/stack');
 
-/*
-1	MAIN := text;
-2	MAIN := MAIN CALL text;
-3	MAIN := MAIN INCORRECT;
-4	CALL := macro;
-5	CALL := generic ARGLIST text end generic;
-6	ARGLIST := ARG;
-7	ARGLIST := ARGLIST ARG;
-8	ARG := text arg ARGTEXT end arg;
-9	ARGTEXT := text;
-10	ARGTEXT := ARGTEXT CALL text;
-	
-11	INCORRECT := generic IARGLIST;
-12	IARGLIST := IARG;
-13	IARGLIST := ARGLIST IARG;
-14	IARG := text arg IARGTEXT;
-15	IARG := error;
-16	IARGTEXT := ARGTEXT CALL error;
-17	IARGTEXT := error;
-18	IARGTEXT := ARGTEXT INCORRECT;
-*/
+const makeTranslator = require('./make-translator.js');
 
-/**
- * Правила свёртки
- * @const Rule : Object<Number.[String, Number]>
- * Отображает номер правила свёртки на пары [TYPE, len] - 
- *	TYPE : String - тип создаваемого нетерминала
- *  len : Number - количество символов в сворачиваемой строке
- */
-const Rule = {
-	1:['MAIN', 1],
-	2:['MAIN', 3],
-	3:['MAIN', 2],
-	4:['CALL', 1],
-	5:['CALL', 4],
-	6:['ARGLIST', 1],
-	7:['ARGLIST', 2],
-	8:['ARG', 4],
-	9:['ARGTEXT', 1],
-	10:['ARGTEXT', 3],
-	
-	11:['INCORRECT', 2],
-	12:['IARGLIST', 1],
-	13:['IARGLIST', 2],
-	14:['IARG', 3],
-	15:['IARG', 1],
-	16:['IARGTEXT', 3],
-	17:['IARGTEXT', 1],
-	18:['IARGTEXT', 1]
-};
+const {
+	SituationsSet,
+	buildGraph
+} = require('./make-syntax.js');
+
+const {
+	makeStates
+} = require('./make-states.js');
+
+const all = new SituationsSet(
+`
+	MAIN := text;
+	MAIN := MAIN CALL text;
+	MAIN := MAIN INCORRECT;
+	CALL := macro;
+	CALL := generic ARGLIST text 'end generic';
+	ARGLIST := ARG;
+	ARGLIST := ARGLIST ARG;
+	ARG := text arg ARGTEXT 'end arg';
+	ARGTEXT := text;
+	ARGTEXT := ARGTEXT CALL text;
+
+
+
+	INCORRECT := generic IARGLIST;
+	IARGLIST := IARG;
+	IARGLIST := ARGLIST IARG;
+	IARG := text arg IARGTEXT;
+	IARG := error;
+	IARGTEXT := ARGTEXT CALL error;
+	IARGTEXT := error;
+	IARGTEXT := ARGTEXT INCORRECT;
+`.split(';').filter((a)=>(!!a.trim()))
+);
+
+const graph = buildGraph('MAIN', all);
+
 
 /**
  * Объединяет леворекурсивную пару нетерминалов, сливая их data в общий массив
@@ -75,144 +64,10 @@ const Special = {
 	ARGTEXT:toConcat
 };
 
-/*
- * Таблица перехода
- * R - свёртка, номер - номер правила из Rule
- * Q - переход
- * @const State : Object<Number.(Object<String.Function<(stack,read,tocken)=>(next)>>)> - набор функций, выполняющих преобразования
- * функция выбирается из объекта по номеру состояния и типу очередного токена State[state][type],
- * вызывается с текущим стеком, функцией чтения входного потока и тем самым токеном tocken = handler(stack, read, tocken)
- * возвращаемое значение - это следующий токен
- * побочные эффекты - правильная работа со стеком
- */
-const State = `
-Q0,text = R1;
-Q0,MAIN = Q1;
 
-Q1,CALL = Q2
-Q1,INCORRECT = R3
-Q1,macro = R4
-Q1,generic = Q3
+State = makeStates(graph.states, graph.reduce, Special);
 
-Q2,text = R2
-
-Q3,ARGLIST = Q4
-Q3,IARGLIST = R11
-Q3,ARG = R6
-Q3,IARG = R12
-Q3,text = Q5
-Q3,error = R15
-
-Q4,ARG = R7
-Q4,IARG = R13
-Q4,text = Q5
-Q4,error = R15
-
-Q5,arg = Q6
-Q5,end generic = R5
-
-Q6,ARGTEXT = Q7
-Q6,IARGTEXT = R14
-Q6,text = R9
-Q6,error = R17
-
-Q7,end arg = R8
-Q7,CALL = Q8
-Q7,INCORRECT = R18
-Q7,macro = R4
-Q7,genetic = Q3
-
-Q8,text = R10
-Q8,error = R16
-`.split(/\n\s*/g).reduce((akk, text)=>{
-	text.replace(/Q(\d+),([^=]+) = ([QR])(\d+)/, (_, state, type, command, number)=>{
-		state = +state;
-		number = +number;
-		if(!akk[state]){
-			akk[state] = {};
-		}
-		if(command === 'Q'){
-			akk[state][type] = (stack, read, tocken)=>{
-				stack.push(tocken);
-				stack.push(number);
-				return read();
-			};
-		}
-		else if(command === 'R'){
-			akk[state][type] = (stack, read, tocken)=>{
-				let [ntype, count] = Rule[number];
-				let data = [];
-				for(let i=1; i<count; ++i){
-					stack.pop();
-					data.push(stack.pop());
-				}
-				data.reverse();
-				data.push(tocken);
-				let fun = Special[ntype];
-				if(fun){
-					data = fun(ntype, data);
-				}
-				return {type:ntype, data};
-			};
-		}
-	});
-	return akk;
-}, {});
-
-/**
- * 
- * @param tockens:Iterable - итератор токенов, полученный из лексического анализатора
- * Строит абстрактное дерево трансляции
- * @returned Object - возвращает корневой нетерминал, в данных которого иерархически вложено всё остальное
- */
-function translator(tockens){
-	/**
-	 * Стек пар символов [дно, 0,  символ, состояние,  символ, состояние, ... символ, состояние]
-	 */
-	const stack = new Stack();
-	
-	/**
-	 * Читает очередной токен или генерирует токен <EOF>
-	 */
-	const read = ()=>{
-		let item = tockens.next();
-		return item.done ? {type:'<EOF>'} : item.value;
-	};
-	
-	/**
-	 * выталкивает несколько символов из стека и возвращает их в порядке добавления
-	 */
-	const pop = (count)=>{
-		let result = [];
-		for(let i=0; i<count; ++i){
-			stack.pop();
-			result.push(stack.pop());
-		}
-		return result.reverse();
-	};
-	
-	let tocken = read();
-	
-	stack.push(0);
-	while(true){
-		let state = stack.top;
-		let type = tocken.type;
-		
-		
-		let handler = State[state][type];
-		if(handler){
-			tocken = handler(stack, read, tocken);
-		}
-		else if(type === '<EOF>'){
-			let [MAIN] = pop(1);
-			return MAIN;
-		}
-		else{
-			throw new Error('HZ');
-		}
-	}
-}
-
+//console.log(graph.states, graph.reduce);
 /*
 	Нетерминальные символы
 	MAIN
@@ -227,4 +82,4 @@ function translator(tockens){
 	IARGTEXT
 */
 
-module.exports = translator;
+module.exports = makeTranslator(State);
