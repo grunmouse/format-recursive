@@ -276,10 +276,11 @@ function buildGraph(start, all){
 	});
 	
 	const statedoc = {};
-	const states = {};
-	const reduce = {};
-	const rules = [...all];
+	const states = new Set();
+	const reduce = new Map();
 	const conflict = [];
+	
+	const edges = [];
 	
 	for(let q of nodes){
 		statedoc[q.number] = q.I;
@@ -287,9 +288,9 @@ function buildGraph(start, all){
 			conflict.push(q.I);
 		}
 		if(q.edges.size > 0){
-			states[q.number] = {};
+			states.add(q.number);
 			for(let [X,q1] of q.edges){
-				states[q.number][X] = q1.number;
+				edges.push([q.number, X, q1.number]);
 			}
 		}
 		else if(q.I.size === 1){
@@ -297,35 +298,55 @@ function buildGraph(start, all){
 			
 			rule = rule.restart();
 			
-			let index = rules.findIndex((a)=>(''+a === ''+rule));
-			
-			reduce[q.number] = [rule.left, rule.right.length, index];
+			reduce.set(q.number, [rule.left, rule.right.length]);
 		}
 	}
 	
-	return {statedoc, rules, states, reduce, conflict};
+	edges.forEach((edge)=>{
+		let number = edge[2];
+		let type = states.has(number) ? 'Q' : reduce.has(number) ? 'R' : 'ERR';
+		if(type === 'ERR'){
+			throw new Error('Invalid automat command number ' + number);
+		}
+		let rule = [type, number];
+		edge[2] = rule;
+	});
+	
+	return {statedoc, edges, reduce, conflict};
 }
 
-function makeStates(states, reduce){
+/**
+ * Создаёт таблицу переключения состояний транслятора
+ */
+function makeStates(edges, reduce){
 	const result = {};
-	for(let q of Object.keys(states)){
-		let state = states[q];
-		result[q] = {};
-		for(let x of Object.keys(state)){
-			let number = state[x];
-			if(x[0] === "'"){
-				x = x.slice(1,-1);
-			}
-			if(number in states){
-				result[q][x] = ['Q', number];
-			}
-			else if(number in reduce){
-				result[q][x] = ['R', reduce[number]];
-			}
+	for(let [q, x, rule] of edges){
+		result[q] = result[q] || {};
+		if(x[0] === "'"){
+			x = x.slice(1,-1);
 		}
-		
+		if(rule[0] === 'Q'){
+			result[q][x] = rule;
+		}
+		else if(rule[0] === 'R'){
+			result[q][x] = ['R', reduce.get(rule[1])];
+		}
 	}
 	return result;
+}
+
+function toDot(edges, reduce){
+	const result = [];
+	for(let [r, rule] of reduce){
+		let node = `R${r}[label="${rule[0]}";shape="rectangle"];`;
+		result.push(node);
+	}
+	for(let [q, x, rule] of edges){
+		let edge = `Q${q} -> ${rule.join('')} [label="${x}"];`;
+		result.push(edge);
+	}
+	
+	return result.join('\n');
 }
 
 module.exports = {
@@ -334,5 +355,6 @@ module.exports = {
 	CLOSURE,
 	GOTO,
 	buildGraph,
-	makeStates
-}
+	makeStates,
+	toDot
+};

@@ -1,7 +1,9 @@
 const {
 	SituationsSet,
 	buildGraph,
-	makeStates
+	makeStates,
+	transpose,
+	toDot
 } = require('./make-syntax.js');
 
 const all = new SituationsSet(
@@ -11,6 +13,7 @@ const all = new SituationsSet(
 	MAIN := MAIN INCORRECT;
 	CALL := macro;
 	CALL := generic ARGLIST text 'end generic';
+	CALL := generic text 'end generic';
 	ARGLIST := ARG;
 	ARGLIST := ARGLIST ARG;
 	ARG := text arg ARGTEXT 'end arg';
@@ -30,13 +33,17 @@ const all = new SituationsSet(
 `.split(';').filter((a)=>(!!a.trim()))
 );
 
+//console.log(all);
+
 const graph = buildGraph('MAIN', all);
+
+//console.log(toDot(graph.edges, graph.reduce));
 
 if(graph.conflict.lenght > 0){
 	console.log(graph.conflict);
 	throw new Error('Grammatic conflict!');
 }
 
-State = makeStates(graph.states, graph.reduce);
+State = makeStates(graph.edges, graph.reduce);
 
 module.exports = State;

@@ -85,7 +85,7 @@ describe('format-recursive', ()=>{
 		});		
 		
 		it('subformat with inherited variable', ()=>{
-			let template = 'before ${sub}';
+			let template = 'before ${sub!}';
 			
 			let sub = '${a} text';
 			
@@ -165,7 +165,7 @@ describe('format-recursive', ()=>{
 		});		
 		
 		it('subformat with inherited variable', ()=>{
-			let template = 'before ${sub}';
+			let template = 'before ${sub!}';
 			
 			assert.equal(compile(template)( {sub:'${a} text', a:'argument'}), 'before argument text');
 			assert.equal(compile(template)( {sub:'sub', a:'argument'}), 'before sub');

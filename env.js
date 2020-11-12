@@ -23,6 +23,11 @@ class Frame extends Map{
 		let frame = new Frame(this);
 		return frame;
 	}
+	
+	empty(){
+		return new Frame();
+	}
+	
 	set(key, value){
 		if(typeof value === 'string'){
 			value = compil(value);
@@ -47,6 +52,5 @@ class Frame extends Map{
 		let str = fun(fra);
 	}
 }
-
 
 module.exports = Frame;

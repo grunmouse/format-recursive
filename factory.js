@@ -55,6 +55,11 @@ class Call{
 		let header = items[0];
 		if(header.type === 'generic'){
 			let [generic, arglist, text, endgen] = items;
+			if(!endgen){
+				endgen = text;
+				text = arglist;
+				arglist = undefined;
+			}
 			this.arglist = new Arglist(arglist);
 			this.tail = text.raw + endgen.raw;
 		}
@@ -75,7 +80,7 @@ class Call{
 		}
 		else if(env.has(this.name)){
 			let fun = env.get(this.name);
-			let frame = this.arglist ? this.arglist.getFrame(env) : env;
+			let frame = this.arglist ? this.arglist.getFrame(env) : env.empty();
 			
 			return fun(frame);
 		}
@@ -99,7 +104,7 @@ class Call{
  */
 class Arglist{
 	constructor(obj){
-		this.items = obj.data.map(a=>(new Arg(a)));
+		this.items = obj ? obj.data.map(a=>(new Arg(a))) : [];
 	}
 	/**
 	 * Вычисляет аргументы и создаёт новое окружение для вызываемого макроса
