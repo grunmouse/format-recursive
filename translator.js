@@ -1,7 +1,36 @@
 const Stack = require('@grunmouse/stack');
 
 
-function makeTranslator(State){
+
+
+const makeGo = number => (stack, read, tocken)=>{
+					stack.push(tocken);
+					stack.push(number);
+					return read();
+				};
+
+const makeReduce = (rule) => (stack, read, tocken, Special)=>{
+				let [ntype, count] = rule;
+				let data = [];
+				for(let i=1; i<count; ++i){
+					stack.pop();
+					data.push(stack.pop());
+				}
+				data.reverse();
+				data.push(tocken);
+				let fun = Special && Special[ntype];
+				if(fun){
+					data = fun(ntype, data);
+				}
+				return {type:ntype, data};
+			}
+
+function makeHandler(type, param){
+	return {'Q':makeGo, 'R':makeReduce}[type](param);
+}
+
+
+function makeTranslator(State, Special){
 
 	/**
 	 * 
@@ -44,7 +73,7 @@ function makeTranslator(State){
 			
 			let handler = State[state][type];
 			if(handler){
-				tocken = handler(stack, read, tocken);
+				tocken = makeHandler(...handler)(stack, read, tocken, Special);
 			}
 			else if(type === '<EOF>'){
 				let [MAIN] = pop(1);

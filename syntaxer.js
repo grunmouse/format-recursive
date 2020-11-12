@@ -1,45 +1,9 @@
 
 const Stack = require('@grunmouse/stack');
 
-const makeTranslator = require('./make-translator.js');
+const makeTranslator = require('./translator.js');
 
-const {
-	SituationsSet,
-	buildGraph
-} = require('./make-syntax.js');
-
-const {
-	makeStates
-} = require('./make-states.js');
-
-const all = new SituationsSet(
-`
-	MAIN := text;
-	MAIN := MAIN CALL text;
-	MAIN := MAIN INCORRECT;
-	CALL := macro;
-	CALL := generic ARGLIST text 'end generic';
-	ARGLIST := ARG;
-	ARGLIST := ARGLIST ARG;
-	ARG := text arg ARGTEXT 'end arg';
-	ARGTEXT := text;
-	ARGTEXT := ARGTEXT CALL text;
-
-
-
-	INCORRECT := generic IARGLIST;
-	IARGLIST := IARG;
-	IARGLIST := ARGLIST IARG;
-	IARG := text arg IARGTEXT;
-	IARG := error;
-	IARGTEXT := ARGTEXT CALL error;
-	IARGTEXT := error;
-	IARGTEXT := ARGTEXT INCORRECT;
-`.split(';').filter((a)=>(!!a.trim()))
-);
-
-const graph = buildGraph('MAIN', all);
-
+const State = require('./language-dev.js');
 
 /**
  * Объединяет леворекурсивную пару нетерминалов, сливая их data в общий массив
@@ -65,7 +29,6 @@ const Special = {
 };
 
 
-State = makeStates(graph.states, graph.reduce, Special);
 
 //console.log(graph.states, graph.reduce);
 /*
@@ -82,4 +45,6 @@ State = makeStates(graph.states, graph.reduce, Special);
 	IARGTEXT
 */
 
-module.exports = makeTranslator(State);
+//console.log(State);
+
+module.exports = makeTranslator(State, Special);

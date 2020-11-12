@@ -1,3 +1,9 @@
+const inspect = Symbol.for('nodejs.util.inspect.custom');
+//const util = require('util');
+
+//[util.inspect.custom]
+
+//console.log(inspect === util.inspect.custom);
 
 class Situation{
 	constructor(left, right, pos=0){
@@ -23,6 +29,10 @@ class Situation{
 	
 	toJSON(){
 		return ''+this;
+	}
+	
+	[inspect](depth, options){
+		return ''+this.toString();
 	}
 	
 	move(symbol){
@@ -91,6 +101,9 @@ class SituationsSet extends Map{
 	}
 	toJSON(){
 		return [...this];
+	}
+	[inspect](depth, options){
+		return this.toJSON();
 	}
 	
 	get key(){
@@ -293,10 +306,33 @@ function buildGraph(start, all){
 	return {statedoc, rules, states, reduce, conflict};
 }
 
+function makeStates(states, reduce){
+	const result = {};
+	for(let q of Object.keys(states)){
+		let state = states[q];
+		result[q] = {};
+		for(let x of Object.keys(state)){
+			let number = state[x];
+			if(x[0] === "'"){
+				x = x.slice(1,-1);
+			}
+			if(number in states){
+				result[q][x] = ['Q', number];
+			}
+			else if(number in reduce){
+				result[q][x] = ['R', reduce[number]];
+			}
+		}
+		
+	}
+	return result;
+}
+
 module.exports = {
 	parseRule,
 	SituationsSet,
 	CLOSURE,
 	GOTO,
-	buildGraph
+	buildGraph,
+	makeStates
 }
