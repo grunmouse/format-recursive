@@ -8,8 +8,10 @@ const escape = require('./escape.js');
 
 /**
  * Создаёт из исходного кода функцию, дклающую подстановку и возвращающую текст
+ * @param code
+ * @return Function<(Environment)=>(String)>
  */
-function compil(code, fin){
+function compil(code){
 	code = escape.escape(code);
 	let ast = translator(lexer(code));
 	let obj = factory(ast);

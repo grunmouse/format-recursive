@@ -6,6 +6,10 @@ const {
 	toDot
 } = require('./make-syntax.js');
 
+/**
+ * Генерирует таблицу автомата состояний
+ */
+
 const all = new SituationsSet(
 `
 	MAIN := text;
@@ -44,6 +48,6 @@ if(graph.conflict.lenght > 0){
 	throw new Error('Grammatic conflict!');
 }
 
-State = makeStates(graph.edges, graph.reduce);
+const State = makeStates(graph.edges, graph.reduce);
 
 module.exports = State;

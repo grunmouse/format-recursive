@@ -18,7 +18,7 @@ const patVaropen = `\\$(\\$*)\\{\\s*(${patName})\\s*(!|\\})`;
  * Находит очередной аргумент или конец макроса
  * [raw, call, name] 
  */
-const patArglist = `(\\})|(${patName})[^<]*<`;
+const patArglist = `(\\})|\s*<|(${patName})[^<]*<`;
 
 /**
  * Паттерн текста аргумента
@@ -84,6 +84,11 @@ function *lexer(str){
 					else if(name){
 						//Это аргумент, мы получили его имя и позицию начала его значения
 						yield {type:'arg', raw, name};
+						stack.push('argtext');
+					}
+					else{
+						console.log('use empty name');
+						yield {type:'arg', raw, name:''};
 						stack.push('argtext');
 					}
 					index = reg.lastIndex;

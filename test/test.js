@@ -111,13 +111,43 @@ describe('format-recursive', ()=>{
 			assert.equal(result, 'before ${sub!a<text inject>}');
 		});
 		
-		it('macro in argumetn', ()=>{
+		it('macro in argument', ()=>{
 			let template = 'before ${sub!a<text $${arg}>}';
 			let sub = '${a!arg<inner>} after';
 			
 			let result = use(template, {sub, arg:'inject'});
 			
 			assert.equal(result, 'before text inner after');
+		});
+		
+		it('with function in environment', ()=>{
+			function repeat(env){
+				let s = env.get('S')();
+				let n = env.get('n')();
+				
+				return s.repeat(+n);
+			}
+			
+			let template = '<<< ${repeat!S<Hello, World! > n <3>}>>>';
+			
+			let result = use(template, {repeat});
+			
+			assert.equal(result, '<<< Hello, World! Hello, World! Hello, World! >>>');
+		});		
+		
+		it('with empty string as param name', ()=>{
+			function repeat(env){
+				let s = env.get('')();
+				let n = env.get('n')();
+				
+				return s.repeat(+n);
+			}
+			
+			let template = '<<< ${repeat! <Hello, World! > n <3>}>>>';
+			
+			let result = use(template, {repeat});
+			
+			assert.equal(result, '<<< Hello, World! Hello, World! Hello, World! >>>');
 		});
 		
 	});

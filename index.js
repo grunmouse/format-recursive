@@ -8,15 +8,16 @@ const escape = require('./escape.js');
 
 function use(tmpl, vars, env){
 	const fun = compil(tmpl);
-	const fra = new Frame(vars, env);
+	let fra = env ? env.make(vars) : new Frame(vars);
 	
 	return escape.toText(fun(fra));
 }
 
-function compile(tmpl){
+function compile(tmpl, env){
 	const fun = compil(tmpl);
+	env = env || new Frame();
 	return (vars)=>{
-		const fra = new Frame(vars);
+		const fra = env.make(vars);
 		return escape.toText(fun(fra));
 	}
 }

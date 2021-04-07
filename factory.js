@@ -167,7 +167,7 @@ class Arg{
 }
 
 /**
- * @const mappint : Object<String.ITemplate>
+ * @const mapping : Object<String.Constructor(ITemplate)>
  */
 const mapping = {
 	MAIN:Template,
@@ -178,6 +178,8 @@ const mapping = {
 
 /**
  * Создаёт обёртки над нетерминалами и текстом
+ * @param obj - AST шаблона
+ * @return {ITemplate}
  */
 function factory(obj){
 	let Ctor = mapping[obj.type];

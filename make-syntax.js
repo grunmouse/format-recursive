@@ -317,6 +317,9 @@ function buildGraph(start, all){
 
 /**
  * Создаёт таблицу переключения состояний транслятора
+ *
+ * @return {Object<(state:string).(Object<(symbol:string).rule>)>}
+ * - объект, отображающий состояние и очередной символ на правило трансляции
  */
 function makeStates(edges, reduce){
 	const result = {};
@@ -335,6 +338,9 @@ function makeStates(edges, reduce){
 	return result;
 }
 
+/**
+ * Создаёт представление автомата в формате DOT
+ */
 function toDot(edges, reduce){
 	const result = [];
 	for(let [r, rule] of reduce){
