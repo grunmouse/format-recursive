@@ -8,6 +8,16 @@ function ensureIterable(iterable){
 	return iterable;
 }
 
+const ISNONE = Symbol('isnone');
+
+/**
+ * @Interface IEnv
+ * @method make 
+ * @method empty
+ * @method get
+ * @method set
+ */
+
 /**
  * @class Frame - кадр, хранящий значения
  * @extends Map <String.Function>
@@ -21,7 +31,7 @@ class Frame extends Map{
 	}
 	
 	make(vars){
-		let frame = new Frame(this);
+		let frame = new this.constructor(this);
 		if(vars){
 			frame.addMany(vars);
 		}
@@ -29,7 +39,7 @@ class Frame extends Map{
 	}
 	
 	empty(){
-		return new Frame();
+		return new this.constructor();
 	}
 	
 	/**
@@ -44,6 +54,21 @@ class Frame extends Map{
 			throw new TypeError('Value is not callable');
 		}
 		super.set(key, value);
+	}
+	
+	get(key){
+		if(!super.has(key)){
+			if(super.has(ISNONE)){
+				let fun = super.get(ISNONE);
+				let ret = fun(key);
+				this.set(key, ret);
+			}
+		}
+		return super.get(key);
+	}
+	
+	setIsNone(fun){
+		super.set(ISNONE, fun);
 	}
 	
 	addMany(iterable){
