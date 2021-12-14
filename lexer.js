@@ -87,7 +87,7 @@ function *lexer(str){
 						stack.push('argtext');
 					}
 					else{
-						console.log('use empty name');
+						//Это аргумент без имени, такое тоже можно
 						yield {type:'arg', raw, name:''};
 						stack.push('argtext');
 					}
