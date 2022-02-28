@@ -86,6 +86,7 @@ class Frame extends Map{
 		let fun = this.get(tmpl);
 		let fra = this.make(params);
 		let str = fun(fra);
+		return str;
 	}
 }
 
