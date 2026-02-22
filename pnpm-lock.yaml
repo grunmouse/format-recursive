@@ -1,7 +1,0 @@
-lockfileVersion: 5.3
-
-specifiers:
-  '@grunmouse/stack': link:..\stack
-
-dependencies:
-  '@grunmouse/stack': link:../stack
