@@ -1,7 +1,3 @@
-const Stack = require('@grunmouse/stack');
-
-
-
 
 const makeGo = number => (stack, read, tocken)=>{
 					stack.push(tocken);
@@ -42,7 +38,7 @@ function makeTranslator(State, Special){
 		/**
 		 * Стек пар символов [дно, 0,  символ, состояние,  символ, состояние, ... символ, состояние]
 		 */
-		const stack = new Stack();
+		const stack = [];
 		
 		/**
 		 * Читает очередной токен или генерирует токен <EOF>
@@ -68,7 +64,7 @@ function makeTranslator(State, Special){
 		
 		stack.push(0);
 		while(true){
-			let state = stack.top;
+			let state = stack[stack.length-1];
 			let type = tocken.type;
 			
 			let handler = State[state][type];

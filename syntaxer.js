@@ -1,6 +1,4 @@
 
-const Stack = require('@grunmouse/stack');
-
 const makeTranslator = require('./translator.js');
 
 const State = require('./language-dev.js');

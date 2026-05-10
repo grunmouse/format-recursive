@@ -1,5 +1,3 @@
-const Stack = require('@grunmouse/stack');
-
 /**
  * Паттерн имени 
  * Имя может быть валидным идентификатором, целым числом или произвольной строкой, заключённой в []
@@ -31,11 +29,11 @@ const patArgText = `${patVaropen}|(>)`;
  * Генератор токенов, найденных в строке
  */
 function *lexer(str){
-	const stack = new Stack();
+	const stack = [];
 	stack.push('text');
 	let index = 0;
 	while(index<str.length){
-		switch(stack.top){
+		switch(stack[stack.length-1]){
 			case 'text':{
 				//Ищем начало шаблона
 				let reg = new RegExp(patVaropen, 'ug');
